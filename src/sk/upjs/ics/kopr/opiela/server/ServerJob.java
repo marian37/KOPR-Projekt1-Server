@@ -11,8 +11,6 @@ import java.util.concurrent.Callable;
 
 public class ServerJob implements Callable<Void> {
 
-	private static final int DLZKA_CHUNKU = 128 * 1024;
-
 	private final Socket klient;
 
 	private final File subor;
@@ -31,12 +29,10 @@ public class ServerJob implements Callable<Void> {
 		BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
 		String riadok = br.readLine();
-		System.out.println("Prišlo: " + riadok);
 		if ("info".equals(riadok)) { // info
 			PrintWriter pw = new PrintWriter(klient.getOutputStream());
 			pw.println(subor.getName()); // názov súboru
 			pw.println(subor.length()); // veľkosť súboru
-			pw.println(DLZKA_CHUNKU); // dĺžka chunku
 			pw.flush();
 			pw.close();
 		}
@@ -45,14 +41,11 @@ public class ServerJob implements Callable<Void> {
 			int offset = Integer.parseInt(br.readLine()); // plus offset
 			int dlzka = Integer.parseInt(br.readLine()); // plus dĺžka
 			byte[] bytes = new byte[dlzka];
-			suborRAF.read(bytes, offset, dlzka);
-			suborRAF.close();
-			klient.getOutputStream().write(bytes, offset, dlzka);
-			klient.getOutputStream().flush();
-			klient.getOutputStream().close();
-			System.out.println("Poslalo: " + offset + " " + dlzka + " reálne: "
-					+ bytes.length);
-			// Je nutné použiť flush?
+			synchronized (suborRAF) {
+				suborRAF.seek(offset);
+				suborRAF.read(bytes);
+			}
+			klient.getOutputStream().write(bytes);
 		}
 
 		klient.close();

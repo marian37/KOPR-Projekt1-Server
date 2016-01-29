@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.util.concurrent.ExecutionException;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -19,25 +20,27 @@ public class ServerGui {
 
 	private static final String CURRENT_DIRECTORY = "/mnt/Data/";
 
-	private JFrame frame = new JFrame("Server");
+	private final JFrame frame = new JFrame("Server");
 
-	private JLabel lblPort = new JLabel("Port:");
+	private final JLabel lblPort = new JLabel("Port:");
 
-	private JTextField txtPort = new JTextField("5000");
+	private final JTextField txtPort = new JTextField("5000");
 
-	private JButton btnVyberSubor = new JButton("Vyber súbor...");
+	private final JButton btnVyberSubor = new JButton("Vyber súbor...");
 
-	private JFileChooser fileChooser = new JFileChooser(CURRENT_DIRECTORY);
+	private final JFileChooser fileChooser = new JFileChooser(CURRENT_DIRECTORY);
 
-	private JLabel lblSubor = new JLabel();
+	private final JLabel lblSubor = new JLabel();
 
-	private JButton btnStart = new JButton("Spusti server");
+	private final JButton btnStart = new JButton("Spusti server");
 
-	private JButton btnStop = new JButton("Zastav server");
+	private final JButton btnStop = new JButton("Zastav server");
 
 	private int port;
 
 	private File subor;
+
+	private ServerExecutor se;
 
 	public ServerGui() {
 		frame.setLayout(new MigLayout("wrap 2", "[][grow, fill]",
@@ -96,6 +99,7 @@ public class ServerGui {
 	}
 
 	private void btnStopActionPerformed() {
+		se.close();
 		frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
 	}
 
@@ -108,16 +112,25 @@ public class ServerGui {
 			btnStart.setEnabled(false);
 			btnStop.setEnabled(true);
 
-			System.out.println(port + " " + subor);
-
 			// spustenie serveru
 			SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
 
 				@Override
 				protected Void doInBackground() throws Exception {
-					ServerExecutor se = new ServerExecutor(port, subor);
+					se = new ServerExecutor(port, subor);
 					se.start();
 					return null;
+				}
+
+				@Override
+				protected void done() {
+					try {
+						// kontrola, či nenastala výnimka
+						get();
+					} catch (InterruptedException | ExecutionException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 			};
 			worker.execute();
